@@ -1,0 +1,53 @@
+.ifndef MATH_P16_REF_H65
+MATH_P16_REF_H65=1
+
+.include "smilo.h65"
+
+.segment "CODE"
+
+; Conversion buffer
+.importzp zp_p16_converter
+
+; Dereferences 16-bit zeropage pointer
+; Used in the situations when you store the pointer address in the raw data of
+; another pointer.
+;
+; Ex.:
+; pointer2: .byte $00, $01, $02
+; pointer1: .word pointer2
+;
+; As you can't directly get the value of the pointer2 (if you only have pointer1)
+; you need to dereference it as follows:
+;
+; p16_set pointer16_xxx, pointer1, 16
+; p16_ref pointer16_xxx
+;
+; Now you can iterate over bytes in the pointer16_xxx as it contains the address
+; of the pointer2.
+;
+; ldx #$00
+; lda (pointer16_xxx, x)
+;
+.macro p16_ref pointer
+.scope
+    .if .defined(::P16_DEBUG)
+        .out .sprintf("P16_REF: p16_ref (%s)", .string(pointer))
+    .endif
+
+    psh a, y
+
+    p16_set zp_p16_converter, pointer, 16
+
+    ldy #$00
+    lda (zp_p16_converter), y
+    sta pointer
+
+    iny
+    lda (zp_p16_converter), y
+    sta pointer + 1
+
+    pop a, y
+.endscope
+.endmacro
+
+.endif ; MATH_P16_REF_H65

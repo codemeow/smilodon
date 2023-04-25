@@ -1,0 +1,163 @@
+.ifndef MATH_P16_SET_H65
+MATH_P16_SET_H65=1
+
+.feature addrsize
+.linecont +
+
+.include "syntax.h65"
+
+; Sums `dst` and a register
+.macro _p16_set_a dst
+.scope
+    psh a
+
+    sta dst
+    lda #$00
+    sta dst + 1
+
+    pop a
+.endscope
+.endmacro
+
+; Sums `dst` and x register
+.macro _p16_set_x dst
+    psh a, x
+    txa
+    _p16_set_a dst
+    pop a, x
+.endmacro
+
+; Sums `dst` and y register
+.macro _p16_set_y dst
+    psh a, y
+    tya
+    _p16_set_a dst
+    pop a, y
+.endmacro
+
+
+; Sums `dst` and `src` where `src is an immediate 8-bit value, 8 or 16-bit 
+; address of 8-bit value
+.macro _p16_set_8 dst, src
+    psh a
+    lda src
+    _p16_set_a dst
+    pop a
+.endmacro
+
+; Sums `dst` and `src` where `src` is a immediate 16-bit value
+.macro _p16_set_16i dst, src
+    psh a
+
+    lda #<src
+    sta dst
+
+    lda #>src
+    sta dst + 1
+    
+    pop a
+.endmacro
+
+; Sums `dst` and `src` where `src` is a 16-bit value (src, src+1)
+.macro _p16_set_16p dst, src
+    psh a
+
+    lda src + 0
+    sta dst + 0
+
+    lda src + 1
+    sta dst + 1 
+
+    pop a
+.endmacro
+
+; Copies the value of `src` to `dst`
+; 
+; Possible modes:
+; # p16_add dst                 ; dst = a
+; # p16_add dst, a              ; dst = a, `mode` is implied to be `reg`
+; # p16_add dst, x              ; dst = x, `mode` is implied to be `reg`
+; # p16_add dst, y              ; dst = y, `mode` is implied to be `reg`
+; # p16_add dst, src[, mode]    ; dst = src
+;       where src could be:
+;       * 8-bit memory value                    (`mode` is implied to be `8`)
+;       * constant 8-bit value (enum/define)    (`mode` is implied to be `8`)
+;       * immediate 8-bit value                 (`mode` is implied to be `8`)
+;       * immediate 16-bit value                (`mode` is required to be `16`)
+;       * pointer to another 16-bit value       (`mode` is required to be `16`)
+;       * constant 16-bit value (enum/define)   (`mode` is required to be `16`)
+;
+; Note: implied values of `mode` are detected automatically but could be
+; explicitely pointed to increase the readability
+;
+.macro p16_set dst, src, mode
+    .ifblank dst
+        .error "P16_SET macro : first argument cannot be blank"
+    .endif
+
+    .if     (                               \
+                (.blank ({src})) ||         \
+                (.xmatch ({src}, a))        \
+            ) && (                          \
+                (.blank ({mode})) ||        \
+                (.xmatch ({mode}, reg))     \
+            )
+        ; dst = a
+        _p16_set_a dst
+
+    .elseif (.xmatch ({src}, x)) &&         \
+            (                               \
+                (.blank ({mode})) ||        \
+                (.xmatch ({mode}, reg))     \
+            )
+        ; dst = x
+        _p16_set_x dst
+
+    .elseif (.xmatch ({src}, y)) &&         \
+            (                               \
+                (.blank ({mode})) ||        \
+                (.xmatch ({mode}, reg))     \
+            )
+        ; dst = y
+        _p16_set_y dst
+
+    .elseif (                               \
+                (.blank ({mode})) .or       \
+                (.xmatch ({mode}, 8))       \
+            )
+        ; dst = #$xx
+        ; dst = #xx
+        ; dst = $xx
+        ; dst = $xxxx
+        ; dst = define
+        ; dst = enum
+        _p16_set_8 dst, src
+
+    .elseif (.xmatch ({mode}, 16))
+
+        .if (.xmatch (.left (1, {src}), #))
+            ; dst = #$xx   (implied as 16-bit)
+            ; dst = #$xxxx
+            _p16_set_16i dst, .right (.tcount ({src}) - 1, {src})
+            
+        .elseif (.defined (::src))
+            ; dst = enum   (16-bit value)
+            ; dst = define (16-bit value)
+            _p16_set_16i dst, src
+            
+        .else
+            ; dst = xx     (zp-address of 16-bit value)
+            ; dst = $xx    (zp-address of 16-bit value)
+            ; dst = xxxx   (absolute address of 16-bit value)
+            ; dst = $xxxx  (absolute address of 16-bit value)
+            _p16_set_16p dst, src
+
+        .endif
+
+    .else
+        .error "P16_SET macro: unknown mode"
+
+    .endif
+.endmacro
+
+.endif ; MATH_P16_SET_H65

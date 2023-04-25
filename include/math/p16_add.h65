@@ -1,0 +1,345 @@
+.ifndef MATH_P16_ADD_H65
+MATH_P16_ADD_H65=1
+
+.linecont +
+
+.include "syntax.h65"
+
+; Sums `dst` and a register
+.macro _p16_add_a dst
+.scope
+    .if .defined(::P16_DEBUG)
+        .out .sprintf("P16_ADD: _p16_add_a (%s)", .string(dst))
+    .endif
+
+    psh a
+
+    clc
+    adc dst
+    sta dst
+    bcc no_carry
+    inc dst + 1
+    no_carry:
+
+    pop a
+.endscope
+.endmacro
+
+; Sums `dst` and x register
+.macro _p16_add_x dst
+    .if .defined(::P16_DEBUG)
+        .out .sprintf("P16_ADD: _p16_add_x (%s)", .string(dst))
+    .endif
+
+    psh a, x
+    txa
+    _p16_add_a dst
+    pop a, x
+.endmacro
+
+; Sums `dst` and y register
+.macro _p16_add_y dst
+    .if .defined(::P16_DEBUG)
+        .out .sprintf("P16_ADD: _p16_add_y (%s)", .string(dst))
+    .endif
+
+    psh a, y
+    tya
+    _p16_add_a dst
+    pop a, y
+.endmacro
+
+
+; Sums `dst` and `src` where `src` is an 8 or 16-bit address of 8-bit value
+.macro _p16_add_8 dst, src
+    .if .defined(::P16_DEBUG)
+        .out .sprintf("P16_ADD: _p16_add_8 (%s, %s)", .string(dst), .string(src))
+    .endif
+
+    psh a
+    lda src
+    _p16_add_a dst
+    pop a
+.endmacro
+
+; Sums `dst` and `src` where `src` is an immediate 8-bit value
+.macro _p16_add_8i dst, src
+    .if .defined(::P16_DEBUG)
+        .out .sprintf("P16_ADD: _p16_add_8i (%s, %s)", .string(dst), .string(src))
+    .endif
+
+    psh a
+    lda #src
+    _p16_add_a dst
+    pop a
+.endmacro
+
+
+; Sums `dst` and `src` where `src` is a immediate 16-bit value
+.macro _p16_add_16i dst, src
+    .if .defined(::P16_DEBUG)
+        .out .sprintf("P16_ADD: _p16_add_16i (%s, %s)", .string(dst), .string(src))
+    .endif
+
+    psh a
+
+    clc
+    lda #<src
+    adc dst
+    sta dst
+
+    lda #>src
+    adc dst + 1
+    sta dst + 1
+    
+    pop a
+.endmacro
+
+; Sums `dst` and `src` where `src` is a 16-bit value (src, src+1)
+.macro _p16_add_16p dst, src
+    .if .defined(::P16_DEBUG)
+        .out .sprintf("P16_ADD: _p16_add_16p (%s, %s)", .string(dst), .string(src))
+    .endif
+
+    psh a
+
+    clc
+    lda dst + 0
+    adc src + 0
+    sta dst + 0
+
+    lda dst + 1
+    adc src + 1
+    sta dst + 1 
+
+    pop a
+.endmacro
+
+; Sum `dst` and `src, x` where `src` is a 16-bit value (src, src + 1) containing
+; 8-bit value
+.macro _p16_add_8x dst, src
+    .if .defined(::P16_DEBUG)
+        .out .sprintf("P16_ADD: _p16_add_8x (%s, %s)", .string(dst), .string(src))
+    .endif
+
+    psh a, x
+
+    clc
+    lda dst + 0
+    adc src + 0, x
+    sta dst + 0
+
+    lda dst + 1
+    adc #$00
+    sta dst + 1
+
+    pop a, x
+.endmacro
+
+; Sum `dst` and `src, y` where `src` is a 16-bit value (src, src + 1) containing
+; 8-bit value
+.macro _p16_add_8y dst, src
+    .if .defined(::P16_DEBUG)
+        .out .sprintf("P16_ADD: _p16_add_8y (%s, %s)", .string(dst), .string(src))
+    .endif
+
+    psh a, x
+
+    clc
+    lda dst + 0
+    adc src + 0, x
+    sta dst + 0
+
+    lda dst + 1
+    adc #$00
+    sta dst + 1
+
+    pop a, x
+.endmacro
+
+; Sums `dst` and `src, x` where `src` is a 16-bit value (src, src + 1) containing
+; 16-bit value
+.macro _p16_add_16x dst, src
+    .if .defined(::P16_DEBUG)
+        .out .sprintf("P16_ADD: _p16_add_16x (%s, %s)", .string(dst), .string(src))
+    .endif
+
+    psh a, x
+
+    clc
+    lda dst + 0
+    adc src + 0, x
+    sta dst + 0
+
+    lda dst + 1
+    adc src + 1, x
+    sta dst + 1
+
+    pop a, x
+.endmacro
+
+; Sums `dst` and `src, y` where `src` is a 16-bit value (src, src + 1) containing
+; 16-bit value
+.macro _p16_add_16y dst, src
+    .if .defined(::P16_DEBUG)
+        .out .sprintf("P16_ADD: _p16_add_16y (%s, %s)", .string(dst), .string(src))
+    .endif
+
+    psh a, y
+
+    clc
+    lda dst + 0
+    adc src + 0, y
+    sta dst + 0
+
+    lda dst + 1
+    adc src + 1, y
+    sta dst + 1
+
+    pop a, y
+.endmacro
+
+; Sums 16-bit `dst` pointer with the provided value
+; The result is written back to `dst`
+;
+; Possible modes:
+; # p16_add dst                 ; dst = dst + a
+; # p16_add dst, a              ; dst = dst + a, `mode` is implied to be `reg`
+; # p16_add dst, x              ; dst = dst + x, `mode` is implied to be `reg`
+; # p16_add dst, y              ; dst = dst + y, `mode` is implied to be `reg`
+; # p16_add dst, src[, mode]    ; dst = dst + src
+;       where src could be:
+;       * 8-bit memory value                    (`mode` is implied to be `8`)
+;       * constant 8-bit value (enum/define)    (`mode` is implied to be `8`)
+;       * immediate 8-bit value                 (`mode` is implied to be `8`)
+;       * immediate 16-bit value                (`mode` is required to be `16`)
+;       * pointer to another 16-bit value       (`mode` is required to be `16`)
+;       * constant 16-bit value (enum/define)   (`mode` is required to be `16`)
+; # p16_add dst {src, x}[, mode] ; dst = dst + (src, x)
+; # p16_add dst {src, y}[, mode] ; dst = dst + (src, y)
+;       in both cases mode could be skipped (implied to be `8` or set to `16`
+;
+; Note: implied values of `mode` are detected automatically but could be
+; explicitely pointed to increase the readability
+;
+.macro p16_add dst, src, mode
+    .ifblank dst
+        .error "P16_ADD macro : first argument cannot be blank"
+    .endif
+
+    ; Note:
+    ;   Tokens count:
+    ;   * $00               = 1
+    ;   * #$00              = 2
+    ;   * $00, x            = 3
+    ;   * $00, y            = 3
+    ;   * scope::value      = 3
+    ;   * #scope::value     = 4
+    ;   * scope::value, x   = 5
+
+    .if     (                               \
+                (.blank ({src})) ||         \
+                (.xmatch ({src}, a))        \
+            ) && (                          \
+                (.blank ({mode})) ||        \
+                (.xmatch ({mode}, reg))     \
+            )
+        ; dst = dst + a
+        _p16_add_a dst
+
+    .elseif (.xmatch ({src}, x)) &&         \
+            (                               \
+                (.blank ({mode})) ||        \
+                (.xmatch ({mode}, reg))     \
+            )
+        ; dst = dst + x
+        _p16_add_x dst
+
+    .elseif (.xmatch ({src}, y)) &&         \
+            (                               \
+                (.blank ({mode})) ||        \
+                (.xmatch ({mode}, reg))     \
+            )
+        ; dst = dst + y
+        _p16_add_y dst
+
+    .elseif (                               \
+                (.blank ({mode})) .or       \
+                (.xmatch ({mode}, 8))       \
+            )
+
+        .if     (.xmatch (.right (1, {src}), x)) && \
+                (                                   \
+                    (.tcount ({src}) <> 1) &&       \
+                    (.tcount ({src}) .mod 2 = 1)    \
+                )
+            ; dst = dst + (src, x)
+            ; Note that src is a 16-bit pointer
+            _p16_add_8x dst, .left (.tcount ({src}) - 2, {src})
+
+        .elseif (.xmatch (.right (1, {src}), y)) && \
+                (                                   \
+                    (.tcount ({src}) <> 1) &&       \
+                    (.tcount ({src}) .mod 2 = 1)    \
+                )
+            ; dst = dst + (src, y)
+            ; Note that src is a 16-bit pointer
+            _p16_add_8y dst, .left (.tcount ({src}) - 2, {src})
+
+        .elseif (.xmatch (.left (1, {src}), #))
+            ; dst = dst + #$xx
+            _p16_add_8i dst, .right (.tcount ({src}) - 1, {src})
+
+        .else
+            ; dst = dst + $xx
+            ; dst = dst + $xxxx
+            ; dst = dst + define
+            ; dst = dst + enum
+            _p16_add_8 dst, src
+
+        .endif
+
+    .elseif (.xmatch ({mode}, 16))
+
+        .if (.xmatch (.left (1, {src}), #))
+            ; dst = dst + #$xx   (implied as 16-bit)
+            ; dst = dst + #$xxxx
+            _p16_add_16i dst, .right (.tcount ({src}) - 1, {src})
+
+        .elseif (.xmatch (.right (1, {src}), x)) && \
+                (                                   \
+                    (.tcount ({src}) <> 1) &&       \
+                    (.tcount ({src}) .mod 2 = 1)    \
+                )
+                ; dst = dst + (src, x)
+                _p16_add_16x dst, .left (.tcount ({src}) - 2, {src})
+
+        .elseif (.xmatch (.right (1, {src}), y)) && \
+                (                                   \
+                    (.tcount ({src}) <> 1) &&       \
+                    (.tcount ({src}) .mod 2 = 1)    \
+                )
+                ; dst = dst + (src, y)
+                _p16_add_16y dst, .left (.tcount ({src}) - 2, {src})
+
+        .elseif (.defined (::src))
+            ; dst = dst + enum   (16-bit value)
+            ; dst = dst + define (16-bit value)
+            _p16_add_16i dst, src
+
+        .else
+            ; dst = dst + xx     (zp-address of 16-bit value)
+            ; dst = dst + $xx    (zp-address of 16-bit value)
+            ; dst = dst + xxxx   (absolute address of 16-bit value)
+            ; dst = dst + $xxxx  (absolute address of 16-bit value)
+            _p16_add_16p dst, src 
+
+        .endif
+
+    .else
+        .error "P16_ADD macro: unknown mode"
+
+    .endif
+.endmacro
+
+.endif ; MATH_P16_ADD_H65

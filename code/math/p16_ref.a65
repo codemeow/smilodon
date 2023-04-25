@@ -1,0 +1,5 @@
+.segment "ZEROPAGE"
+
+.exportzp zp_p16_converter
+zp_p16_converter:
+    .res 2

@@ -1,0 +1,43 @@
+; Contains the shift of concrete screen line in bytes in the nametable
+;
+; Thus the first tile of the first line of the first nametable has the 
+; address $2000, the second tile is $2001, etc
+; The first tile of the second line has the address $2020
+;
+; To get the actual address sum the nametable address with that shift
+; It is safe to use ptr, x notation here but make sure to double the x
+;
+; Ex.:
+;    lda #5
+;    asl
+;    tax
+;    p16_set zp_pointer16_5, #registers_ppu::nametable0, 16
+;    p16_add zp_pointer16_5, { ppu_screen_line, X }, 16
+;
+.import ppu_screen_line
+
+; Same as above but for registers_ppu::attributeX
+;
+; Values are duplicated to remove any excessive math from calculations:
+;
+; Ex.:
+;    lda #5
+;    asl
+;    tax
+;    p16_set zp_pointer16_5, #registers_ppu::attribute0, 16
+;    p16_add zp_pointer16_5, { ppu_attribute_line, X }, 16
+.import ppu_attribute_line
+
+.scope ppu
+    .scope nametable
+        width  = 32
+        height = 30
+    .endscope
+
+    .scope attrtable
+        width  = 8
+        height = 8
+    .endscope
+
+
+.endscope

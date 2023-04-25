@@ -1,0 +1,16 @@
+.ifndef MATH_P16_POP_H65
+MATH_P16_POP_H65=1
+
+.include "syntax.h65"
+
+; Pops 16-bit value from stack
+; Te opposite of `p16_psh`
+; NOTE: clobbers a register, save it before use
+.macro p16_pop ptr
+    pla
+    sta ptr + 1
+    pla
+    sta ptr
+.endmacro
+
+.endif ; MATH_P16_REF_H65

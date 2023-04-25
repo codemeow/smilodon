@@ -1,0 +1,62 @@
+.segment "RODATA"
+
+; Contains the shift of concrete screen line in bytes in the nametable
+;
+; Thus the first tile of the first line of the first nametable has the 
+; address $2000, the second tile is $2001, etc
+; The first tile of the second line has the address $2020
+;
+; To get the actual address sum the nametable address with that shift
+; It is safe to use ptr, x notation here but make sure to double the x
+;
+; Ex.:
+;        ppu_pointer_init:
+;            p16_set ptr_ppu_addr, #registers_ppu::nametable0, 16
+;
+;        ppu_pointer_y:
+;            ldx ram_loader_var_v
+;            lda ball_head_tile_y, x
+;            asl
+;            tax
+;            p16_set ptr_line_addr, #ppu_screen_line, 16
+;            p16_add ptr_line_addr, x
+;            p16_ref ptr_line_addr
+;            p16_add ptr_ppu_addr,  ptr_line_addr, 16
+;
+;        ppu_pointer_x:            
+;            ldx ram_loader_var_v
+;            p16_add ptr_ppu_addr, { ball_head_tile_x, x }, 8
+;
+.export ppu_screen_line
+ppu_screen_line:
+   .addr  $0000, $0020, $0040, $0060,  $0080, $00a0, $00c0, $00e0
+   .addr  $0100, $0120, $0140, $0160,  $0180, $01a0, $01c0, $01e0
+   .addr  $0200, $0220, $0240, $0260,  $0280, $02a0, $02c0, $02e0
+   .addr  $0300, $0320, $0340, $0360,  $0380, $03a0
+
+; Ex.:
+;        ppu_pointer_init:
+;            p16_set ptr_ppu_addr, #registers_ppu::attribute0, 16
+;
+;        ppu_pointer_y:
+;            ldx ram_loader_var_v
+;            lda ball_head_tile_y, x
+;            asl
+;            tax
+;            p16_set ptr_line_addr, #ppu_attribute_line, 16
+;            p16_add ptr_line_addr, x
+;            p16_ref ptr_line_addr
+;            p16_add ptr_ppu_addr,  ptr_line_addr, 16
+;
+;        ppu_pointer_x:
+;            ldx ram_loader_var_v
+;            lda ball_head_tile_x, x
+;            lsr
+;            lsr
+;            p16_add ptr_ppu_addr, a
+.export ppu_attribute_line
+ppu_attribute_line:
+   .addr  $0000, $0000, $0000, $0000,  $0008, $0008, $0008, $0008
+   .addr  $0010, $0010, $0010, $0010,  $0018, $0018, $0018, $0018
+   .addr  $0020, $0020, $0020, $0020,  $0028, $0028, $0028, $0028
+   .addr  $0030, $0030, $0030, $0030,  $0038, $0038

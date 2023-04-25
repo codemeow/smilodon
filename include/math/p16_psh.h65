@@ -1,0 +1,16 @@
+.ifndef MATH_P16_PSH_H65
+MATH_P16_PSH_H65=1
+
+.include "smilo.h65"
+
+; Pushes 16-bit value to stack
+; Te opposite of `p16_pop`
+; NOTE: clobbers a register, save it before use
+.macro p16_psh ptr
+    lda ptr
+    pha
+    lda ptr + 1
+    pha
+.endmacro
+
+.endif ; MATH_P16_PSH_H65

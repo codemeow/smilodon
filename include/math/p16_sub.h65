@@ -1,0 +1,202 @@
+.ifndef MATH_P16_SUB_H65
+MATH_P16_SUB_H65=1
+
+.feature addrsize
+.linecont +
+
+.include "syntax.h65"
+
+; Subtracts `dst` and a register
+.macro _p16_sub_a dst
+.scope
+    psh a
+
+    clc      
+    sbc dst  
+    sta dst  
+
+    ; As we subtract mem from A the
+    ; action should be reversed
+    lda #$ff 
+    eor dst  
+    sta dst  
+
+    bcc no_carry 
+        dec dst + 1
+    no_carry:
+
+    pop a
+.endscope
+.endmacro
+
+; Subtracts `dst` and x register
+.macro _p16_sub_x dst
+    psh a, x
+    txa
+    _p16_sub_a dst
+    pop a, x
+.endmacro
+
+; Subtracts `dst` and y register
+.macro _p16_sub_y dst
+    psh a, y
+    tya
+    _p16_sub_a dst
+    pop a, y
+.endmacro
+
+
+; Subtracts `dst` and `src` where `src is an immediate 8-bit value, 8 or 16-bit 
+; address of 8-bit value
+.macro _p16_sub_8 dst, src
+    psh a
+    lda src
+    _p16_sub_a dst
+    pop a
+.endmacro
+
+; Subtracts `dst` and `src` where `src` is a immediate 16-bit value
+.macro _p16_sub_16i dst, src
+    psh a
+
+    clc
+    lda #<src      
+    sbc dst  
+    sta dst  
+
+    ; As we subtract mem from A the
+    ; action should be reversed
+    lda #$ff 
+    eor dst  
+    sta dst  
+    
+    lda #>src
+    sbc dst + 1
+    sta dst + 1
+
+    ; See above
+    lda #$ff
+    eor dst + 1
+    sta dst + 1
+
+    pop a
+.endmacro
+
+; Subtracts `dst` and `src` where `src` is a 16-bit value (src, src+1)
+.macro _p16_sub_16p dst, src
+    psh a
+
+    clc
+    lda src + 0
+    sbc dst + 0
+    sta dst + 0
+
+    ; As we subtract mem from A the
+    ; action should be reversed
+    lda #$ff 
+    eor dst + 0
+    sta dst + 0
+    
+    lda src + 1
+    sbc dst + 1
+    sta dst + 1
+
+    ; See above
+    lda #$ff
+    eor dst + 1
+    sta dst + 1
+
+    pop a
+.endmacro
+
+; Subtracts 16-bit `dst` pointer with the provided value
+; The result is written back to `dst`
+;
+; Possible modes:
+; # p16_sub dst                 ; dst = dst + a
+; # p16_sub dst, a              ; dst = dst + a, `mode` is implied to be `reg`
+; # p16_sub dst, x              ; dst = dst + x, `mode` is implied to be `reg`
+; # p16_sub dst, y              ; dst = dst + y, `mode` is implied to be `reg`
+; # p16_sub dst, src[, mode]    ; dst = dst + src
+;       where src could be:
+;       * 8-bit memory value                    (`mode` is implied to be `8`)
+;       * constant 8-bit value (enum/define)    (`mode` is implied to be `8`)
+;       * immediate 8-bit value                 (`mode` is implied to be `8`)
+;       * immediate 16-bit value                (`mode` is required to be `16`)
+;       * pointer to another 16-bit value       (`mode` is required to be `16`)
+;       * constant 16-bit value (enum/define)   (`mode` is required to be `16`)
+;
+; Note: implied values of `mode` are detected automatically but could be
+; explicitely pointed to increase the readability
+;
+.macro p16_sub dst, src, mode
+    .ifblank dst
+        .error "P16_SUB macro : first argument cannot be blank"
+    .endif
+
+    .if     (                               \
+                (.blank ({src})) ||         \
+                (.xmatch ({src}, a))        \
+            ) && (                          \
+                (.blank ({mode})) ||        \
+                (.xmatch ({mode}, reg))     \
+            )
+        ; dst = dst - a
+        _p16_sub_a dst
+
+    .elseif (.xmatch ({src}, x)) &&         \
+            (                               \
+                (.blank ({mode})) ||        \
+                (.xmatch ({mode}, reg))     \
+            )
+        ; dst = dst - x
+        _p16_sub_x dst
+
+    .elseif (.xmatch ({src}, y)) &&         \
+            (                               \
+                (.blank ({mode})) ||        \
+                (.xmatch ({mode}, reg))     \
+            )
+        ; dst = dst - y
+        _p16_sub_y dst
+
+    .elseif (                               \
+                (.blank ({mode})) .or       \
+                (.xmatch ({mode}, 8))       \
+            )
+        ; dst = dst - #$xx
+        ; dst = dst - #xx
+        ; dst = dst - $xx
+        ; dst = dst - $xxxx
+        ; dst = dst - define
+        ; dst = dst - enum
+        _p16_sub_8 dst, src
+
+    .elseif (.xmatch ({mode}, 16))
+
+        .if (.xmatch (.left (1, {src}), #))
+            ; dst = dst - #$xx   (implied as 16-bit)
+            ; dst = dst - #$xxxx
+            _p16_sub_16i dst, .right (.tcount ({src}) - 1, {src})
+
+        .elseif (.defined (src))
+            ; dst = dst - enum   (16-bit value)
+            ; dst = dst - define (16-bit value)
+            _p16_sub_16i dst, src
+
+        .else
+            ; dst = dst - xx     (zp-address of 16-bit value)
+            ; dst = dst - $xx    (zp-address of 16-bit value)
+            ; dst = dst - xxxx   (absolute address of 16-bit value)
+            ; dst = dst - $xxxx  (absolute address of 16-bit value)
+            _p16_sub_16p dst, src
+
+        .endif
+
+    .else
+        .error "P16_SUB macro: unknown mode"
+
+    .endif
+.endmacro
+
+.endif ; MATH_P16_SUB_H65
