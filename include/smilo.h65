@@ -3,15 +3,16 @@ SMILO_H65=1
 
 ; Math
 
-.include "./math/p16_add.h65"
-.include "./math/p16_pop.h65"
-.include "./math/p16_psh.h65"
-.include "./math/p16_ref.h65"
-.include "./math/p16_set.h65"
-.include "./math/p16_sub.h65"
+.include "math/p16_add.h65"
+.include "math/p16_pop.h65"
+.include "math/p16_psh.h65"
+.include "math/p16_ref.h65"
+.include "math/p16_set.h65"
+.include "math/p16_sub.h65"
 
 ; PPU
 
-.include "ppu_tables_consts.h65"
+.include "ppu/ppu_tables_consts.h65"
+.include "ppu/ppu_coords.h65"
 
 .endif ; SMILO_H65

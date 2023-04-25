@@ -1,0 +1,25 @@
+; Converts A from tile coordinates to sprite
+.macro ppu_coords_tiles2sprite arg
+    .ifblank arg ; Implied A
+        asl ; /2
+        asl ; /4
+        asl ; /8
+    .else
+        asl arg ; /2
+        asl arg ; /4
+        asl arg ; /8
+    .endif
+.endmacro
+
+; Converts A from sprite coordinates to tile
+.macro ppu_coords_sprite2tile
+    .ifblank arg ; Implied A
+        lsr ; x2
+        lsr ; x4
+        lsr ; x8
+    .else
+        lsr arg ; x2
+        lsr arg ; x4
+        lsr arg ; x8
+    .endif
+.endmacro

@@ -1,4 +1,9 @@
-CA65        := ca65
+ifndef CUSTOM_CA65
+	CA65    := ca65
+else
+	CA65    := $(CUSTOM_CA65)
+endif
+
 
 DIR_CODE    := code
 DIR_OBJECT  := object
